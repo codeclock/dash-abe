@@ -81,6 +81,7 @@ CHAIN_CONFIG = [
     {"chain":"Bitleu"},
     {"chain":"Maxcoin"},
     {"chain":"Dash"},
+    {"chain":"Suppocoin"},
     {"chain":"BlackCoin"},
     {"chain":"Unbreakablecoin"},
     #{"chain":"",
