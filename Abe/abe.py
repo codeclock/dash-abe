@@ -64,12 +64,19 @@ DEFAULT_TEMPLATE = """
 <head>
     <link rel="stylesheet" type="text/css"
      href="%(dotdot)s%(STATIC_PATH)sabe.css" />
+    <link rel="apple-touch-icon" sizes="180x180" href="%(dotdot)s%(STATIC_PATH)sapple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="%(dotdot)s%(STATIC_PATH)sfavicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="%(dotdot)s%(STATIC_PATH)sfavicon-16x16.png">
+    <link rel="manifest" href="%(dotdot)s%(STATIC_PATH)smanifest.json">
+    <link rel="mask-icon" href="%(dotdot)s%(STATIC_PATH)ssafari-pinned-tab.svg" color="#5bbad5">
+    <meta name="theme-color" content="#ffffff">
     <link rel="shortcut icon" href="%(dotdot)s%(STATIC_PATH)sfavicon.ico" />
     <title>%(title)s</title>
 </head>
 <body>
+    <div class="container"><div class="row"><div class="col-lg-12">
     <h1><a href="%(dotdot)s%(HOMEPAGE)s"><img
-     src="%(dotdot)s%(STATIC_PATH)slogo32.png" alt="Abe logo" /></a> %(h1)s
+     src="%(dotdot)s%(STATIC_PATH)slogo32.png" alt="Suppocoin" /></a> %(h1)s
     </h1>
     %(body)s
     <p><a href="%(dotdot)sq">API</a> (machine-readable pages)</p>
@@ -82,6 +89,10 @@ DEFAULT_TEMPLATE = """
         <a href="%(dotdot)saddress/%(DONATIONS_BTC)s">BTC</a>
         <a href="%(dotdot)saddress/%(DONATIONS_NMC)s">NMC</a>
     </p>
+    <p style="font-size:smaller">
+    <a href="https://github.com/codeclock/suppo-abe">APGL Source</a>
+    </p>
+    </div></div></div>
 </body>
 </html>
 """
@@ -221,7 +232,7 @@ class Abe:
             "start_response": start_response,
             "content_type": str(abe.template_vars['CONTENT_TYPE']),
             "template": abe.template,
-            "chain": None,
+            "chain": "Suppocoin",
             }
         if 'QUERY_STRING' in env:
             page['params'] = urlparse.parse_qs(env['QUERY_STRING'])
@@ -287,11 +298,11 @@ class Abe:
         return getattr(abe, 'handle_' + cmd, None)
 
     def handle_chains(abe, page):
-        page['title'] = ABE_APPNAME + ' Search'
+        page['title'] = 'Suppocoin Search'
         body = page['body']
         body += [
             abe.search_form(page),
-            '<table>\n',
+            '<table class="table table-bordered">\n',
             '<tr><th>Currency</th><th>Code</th><th>Block</th><th>Time</th>',
             '<th>Started</th><th>Age (days)</th><th>Coins Created</th>',
             '<th>Avg Coin Age</th><th>',
@@ -455,23 +466,23 @@ class Abe:
         if hi is None:
             hi = int(rows[0][1])
         basename = os.path.basename(page['env']['PATH_INFO'])
-
-        nav = ['<a href="',
+        a_href = '<a class="btn btn-default btn-sm" href="'
+        nav = [a_href,
                basename, '?count=', str(count), '">&lt;&lt;</a>']
-        nav += [' <a href="', basename, '?hi=', str(hi + count),
+        nav += [a_href, basename, '?hi=', str(hi + count),
                  '&amp;count=', str(count), '">&lt;</a>']
         nav += [' ', '&gt;']
         if hi >= count:
-            nav[-1] = ['<a href="', basename, '?hi=', str(hi - count),
+            nav[-1] = [a_href, basename, '?hi=', str(hi - count),
                         '&amp;count=', str(count), '">', nav[-1], '</a>']
         nav += [' ', '&gt;&gt;']
         if hi != count - 1:
-            nav[-1] = ['<a href="', basename, '?hi=', str(count - 1),
+            nav[-1] = [a_href, basename, '?hi=', str(count - 1),
                         '&amp;count=', str(count), '">', nav[-1], '</a>']
         for c in (20, 50, 100, 500, 2016):
             nav += [' ']
             if c != count:
-                nav += ['<a href="', basename, '?count=', str(c)]
+                nav += [a_href, basename, '?count=', str(c)]
                 if hi is not None:
                     nav += ['&amp;hi=', str(max(hi, c - 1))]
                 nav += ['">']
@@ -479,12 +490,12 @@ class Abe:
             if c != count:
                 nav += ['</a>']
 
-        nav += [' <a href="', page['dotdot'], '">Search</a>']
+        nav += [' <a class="btn btn-link btn-sm" href="', page['dotdot'], '">Search</a>']
 
         extra = False
         #extra = True
-        body += ['<p>', nav, '</p>\n',
-                 '<table><tr><th>Block</th><th>Approx. Time</th>',
+        body += ['<p>','<div class="input-group"><div class="input-group-btn">' , nav, '</div></div>', '</p>\n',
+                 '<table class="table table-bordered"><tr><th>Block</th><th>Approx. Time</th>',
                  '<th>Transactions</th><th>Value Out</th>',
                  '<th>Difficulty</th><th>Outstanding</th>',
                  '<th>Average Age</th><th>Chain Age</th>',
@@ -566,7 +577,7 @@ class Abe:
         is_stake_chain = chain.has_feature('nvc_proof_of_stake')
         is_stake_block = is_stake_chain and b['is_proof_of_stake']
 
-        body += ['<p>']
+        body += ['<pre>']
         if is_stake_chain:
             body += [
                 'Proof of Stake' if is_stake_block else 'Proof of Work',
@@ -580,36 +591,36 @@ class Abe:
         if b['next_block_hashes']:
             body += ['Next Block: ']
         for hash in b['next_block_hashes']:
-            body += ['<a href="', dotdotblock, hash, '">', hash, '</a><br />\n']
+            body += ['<a href="', dotdotblock, hash, '">', hash, '</a>\n']
 
         body += [
-            ['Height: ', b['height'], '<br />\n']
+            ['Height: ', b['height'], '\n']
             if b['height'] is not None else '',
 
-            'Version: ', b['version'], '<br />\n',
-            'Transaction Merkle Root: ', b['hashMerkleRoot'], '<br />\n',
-            'Time: ', b['nTime'], ' (', format_time(b['nTime']), ')<br />\n',
+            'Version: ', b['version'], '\n',
+            'Transaction Merkle Root: ', b['hashMerkleRoot'], '\n',
+            'Time: ', b['nTime'], ' (', format_time(b['nTime']), ')\n',
             'Difficulty: ', format_difficulty(util.calculate_difficulty(b['nBits'])),
-            ' (Bits: %x)' % (b['nBits'],), '<br />\n',
+            ' (Bits: %x)' % (b['nBits'],), '\n',
 
             ['Cumulative Difficulty: ', format_difficulty(
-                    util.work_to_difficulty(b['chain_work'])), '<br />\n']
+                    util.work_to_difficulty(b['chain_work'])), '\n']
             if b['chain_work'] is not None else '',
 
-            'Nonce: ', b['nNonce'], '<br />\n',
-            'Transactions: ', len(b['transactions']), '<br />\n',
-            'Value out: ', format_satoshis(b['value_out'], chain), '<br />\n',
-            'Transaction Fees: ', format_satoshis(b['fees'], chain), '<br />\n',
+            'Nonce: ', b['nNonce'], '\n',
+            'Transactions: ', len(b['transactions']), '\n',
+            'Value out: ', format_satoshis(b['value_out'], chain), '\n',
+            'Transaction Fees: ', format_satoshis(b['fees'], chain), '\n',
 
             ['Average Coin Age: %6g' % (b['satoshi_seconds'] / 86400.0 / b['chain_satoshis'],),
-             ' days<br />\n']
+             ' days\n']
             if b['chain_satoshis'] and (b['satoshi_seconds'] is not None) else '',
 
             '' if b['satoshis_destroyed'] is None else
             ['Coin-days Destroyed: ',
              format_satoshis(b['satoshis_destroyed'] / 86400.0, chain), '<br />\n'],
 
-            ['Cumulative Coin-days Destroyed: %6g%%<br />\n' %
+            ['Cumulative Coin-days Destroyed: %6g%%\n' %
              (100 * (1 - float(b['satoshi_seconds']) / b['chain_satoshi_seconds']),)]
             if b['chain_satoshi_seconds'] else '',
 
@@ -617,11 +628,11 @@ class Abe:
              ';total_ss=',b['chain_satoshi_seconds'],';destroyed=',b['satoshis_destroyed']]
             if abe.debug else '',
 
-            '</p>\n']
+            '</pre>\n']
 
         body += ['<h3>Transactions</h3>\n']
 
-        body += ['<table><tr><th>Transaction</th><th>Fee</th>'
+        body += ['<table class="table table-bordered"><tr><th>Transaction</th><th>Fee</th>'
                  '<th>Size (kB)</th><th>From (amount)</th><th>To (amount)</th>'
                  '</tr>\n']
 
@@ -725,7 +736,7 @@ class Abe:
             body += ['</tr>\n']
 
         body += abe.short_link(page, 't/' + hexb58(tx['hash'][:14]))
-        body += ['<p>Hash: ', tx['hash'], '<br />\n']
+        body += ['<pre>Hash: ', tx['hash'], '<br />\n']
         chain = None
         is_coinbase = None
 
@@ -750,19 +761,19 @@ class Abe:
 
         body += [
             'Number of inputs: ', len(tx['in']),
-            ' (<a href="#inputs">Jump to inputs</a>)<br />\n',
-            'Total in: ', format_satoshis(tx['value_in'], chain), '<br />\n',
+            ' (<a href="#inputs">Jump to inputs</a>)\n',
+            'Total in: ', format_satoshis(tx['value_in'], chain), '\n',
             'Number of outputs: ', len(tx['out']),
-            ' (<a href="#outputs">Jump to outputs</a>)<br />\n',
-            'Total out: ', format_satoshis(tx['value_out'], chain), '<br />\n',
-            'Size: ', tx['size'], ' bytes<br />\n',
+            ' (<a href="#outputs">Jump to outputs</a>)\n',
+            'Total out: ', format_satoshis(tx['value_out'], chain), '\n',
+            'Size: ', tx['size'], ' bytes\n',
             'Fee: ', format_satoshis(0 if is_coinbase else
                                      (tx['value_in'] and tx['value_out'] and
                                       tx['value_in'] - tx['value_out']), chain),
-            '<br />\n',
-            '<a href="../rawtx/', tx['hash'], '">Raw transaction</a><br />\n']
-        body += ['</p>\n',
-                 '<a name="inputs"><h3>Inputs</h3></a>\n<table>\n',
+            '\n',
+            '<a href="../rawtx/', tx['hash'], '">Raw transaction</a>\n']
+        body += ['</pre>\n',
+                 '<a name="inputs"><h3>Inputs</h3></a>\n<table class="table table-bordered">\n',
                  '<tr><th>Index</th><th>Previous output</th><th>Amount</th>',
                  '<th>From address</th>']
         if abe.store.keep_scriptsig:
@@ -772,7 +783,7 @@ class Abe:
             row_to_html(txin, 'i', 'o',
                         'Generation' if is_coinbase else 'Unknown')
         body += ['</table>\n',
-                 '<a name="outputs"><h3>Outputs</h3></a>\n<table>\n',
+                 '<a name="outputs"><h3>Outputs</h3></a>\n<table class="table table-bordered">\n',
                  '<tr><th>Index</th><th>Redeemed at input</th><th>Amount</th>',
                  '<th>To address</th><th>ScriptPubKey</th></tr>\n']
         for txout in tx['out']:
@@ -859,7 +870,7 @@ class Abe:
             link = address[0 : abe.shortlink_type]
         body += abe.short_link(page, 'a/' + link)
 
-        body += ['<p>Balance: '] + format_amounts(balance, True)
+        body += ['<pre>Balance: '] + format_amounts(balance, True)
 
         if 'subbinaddr' in history:
             chain = page['chain']
@@ -872,22 +883,22 @@ class Abe:
                 if chain is None:
                     chain = chains[0]
 
-            body += ['<br />\nEscrow']
+            body += ['\nEscrow']
             for subbinaddr in history['subbinaddr']:
                 body += [' ', hash_to_address_link(chain.address_version, subbinaddr, page['dotdot'], 10) ]
 
         for chain in chains:
             balance[chain.id] = 0  # Reset for history traversal.
 
-        body += ['<br />\n',
-                 'Transactions in: ', counts[0], '<br />\n',
-                 'Received: ', format_amounts(received, False), '<br />\n',
-                 'Transactions out: ', counts[1], '<br />\n',
-                 'Sent: ', format_amounts(sent, False), '<br />\n']
+        body += ['\n',
+                 'Transactions in: ', counts[0], '\n',
+                 'Received: ', format_amounts(received, False), '\n',
+                 'Transactions out: ', counts[1], '\n',
+                 'Sent: ', format_amounts(sent, False), '\n']
 
-        body += ['</p>\n'
+        body += ['</pre>\n'
                  '<h3>Transactions</h3>\n'
-                 '<table class="addrhist">\n<tr><th>Transaction</th><th>Block</th>'
+                 '<table class="table table-bordered addrhist">\n<tr><th>Transaction</th><th>Block</th>'
                  '<th>Approx. Time</th><th>Amount</th><th>Balance</th>'
                  '<th>Currency</th></tr>\n']
 
@@ -922,11 +933,11 @@ class Abe:
     def search_form(abe, page):
         q = (page['params'].get('q') or [''])[0]
         return [
-            '<p>Search by address, block number or hash, transaction or'
-            ' public key hash, or chain name:</p>\n'
-            '<form action="', page['dotdot'], 'search"><p>\n'
-            '<input name="q" size="64" value="', escape(q), '" />'
-            '<button type="submit">Search</button>\n'
+            '<p>Search by address, block number or hash or transaction or'
+            ' public key hash:</p>\n'
+            '<form class="form-inline" action="', page['dotdot'], 'search"><p>\n'
+            '<input class="form-control" name="q" size="64" value="', escape(q), '" />'
+            '<button class="form-control btn btn-default" type="submit">Search</button>\n'
             '<br />Address or hash search requires at least the first ',
             HASH_PREFIX_MIN, ' characters.</p></form>\n']
 
@@ -943,7 +954,7 @@ class Abe:
         if util.possible_address(q):found += abe.search_address(q)
         elif ADDR_PREFIX_RE.match(q):found += abe.search_address_prefix(q)
         if is_hash_prefix(q):       found += abe.search_hash_prefix(q)
-        found += abe.search_general(q)
+        #found += abe.search_general(q)
         abe.show_search_results(page, found)
 
     def show_search_results(abe, page, found):
@@ -1783,7 +1794,7 @@ def path_info_int(page, default):
 
 def format_time(nTime):
     import time
-    return time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(int(nTime)))
+    return time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(int(nTime)))
 
 def format_satoshis(satoshis, chain):
     decimals = DEFAULT_DECIMALS if chain.decimals is None else chain.decimals
