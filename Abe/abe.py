@@ -416,6 +416,8 @@ class Abe:
         body += abe.search_form(page)
 
         count = get_int_param(page, 'count') or 20
+        if count >= 2017:
+            count = 20
         hi = get_int_param(page, 'hi')
         orig_hi = hi
 
@@ -500,8 +502,8 @@ class Abe:
             value_out = int(value_out)
             seconds = int(seconds)
             satoshis = int(satoshis)
-            ss = int(ss)
-            total_ss = int(total_ss)
+            ss = int(ss) if ss else 0
+            total_ss = int(total_ss) if total_ss else 0
 
             if satoshis == 0:
                 avg_age = '&nbsp;'
@@ -1781,7 +1783,7 @@ def path_info_int(page, default):
 
 def format_time(nTime):
     import time
-    return time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(int(nTime)))
+    return time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(int(nTime)))
 
 def format_satoshis(satoshis, chain):
     decimals = DEFAULT_DECIMALS if chain.decimals is None else chain.decimals
@@ -2008,6 +2010,7 @@ def create_conf():
         "query":                    None,
         "no_serve":                 None,
         "no_load":                  None,
+        "timezone":                 None,
         "debug":                    None,
         "static_path":              None,
         "document_root":            None,
@@ -2089,8 +2092,18 @@ See abe.conf for commented examples.""")
         import logging.config as logging_config
         logging_config.dictConfig(args.logging)
 
+    # Set timezone
+    if args.timezone:
+        os.environ['TZ'] = args.timezone
+
     if args.auto_agpl:
         import tarfile
+
+    # --rpc-load-mempool loops forever, make sure it's used with
+    # --no-load/--no-serve so users know the implications
+    if args.rpc_load_mempool and not (args.no_load or args.no_serve):
+        sys.stderr.write("Error: --rpc-load-mempool requires --no-serve\n")
+        return 1
 
     store = make_store(args)
     if (not args.no_serve):

@@ -19,6 +19,8 @@
 import re
 import logging
 
+MAX_SCRIPT = 1000000
+MAX_PUBKEY = 65
 NO_CLOB = 'BUG_NO_CLOB'
 STMT_RE = re.compile(r"([^']+)((?:'[^']*')?)")
 
@@ -191,6 +193,15 @@ class SqlAbstraction(object):
             pass
         elif val == 'emulated':
             selectall = sql.emulate_limit(selectall)
+
+        val = sql.config.get('concat_style')
+        if val in (None, 'ansi'):
+            pass
+        elif val == 'mysql':
+            transform_stmt = sql._transform_concat(transform_stmt)
+            # Also squeeze in MySQL VARBINARY length fix
+            # Some MySQL version do not auto-convert to BLOB
+            transform_stmt = sql._transform_varbinary(transform_stmt)
 
         transform_stmt = sql._append_table_epilogue(transform_stmt)
 
@@ -415,6 +426,22 @@ class SqlAbstraction(object):
             return selectall(stmt, params)
         return ret
 
+    def _transform_concat(sql, fn):
+        concat_re = re.compile(r"((?:(?:'[^']*'|\?)\s*\|\|\s*)+(?:'[^']*'|\?))", re.DOTALL)
+        def repl(match):
+            clist = re.sub(r"\s*\|\|\s*", ", ", match.group(1))
+            return 'CONCAT(' + clist + ')'
+        def ret(stmt):
+            return fn(concat_re.sub(repl, stmt))
+        return ret
+
+    def _transform_varbinary(sql, fn):
+        varbinary_re = re.compile(r"VARBINARY\(" + str(MAX_SCRIPT) + "\)")
+        def ret(stmt):
+            # Suitable for prefix+length up to 16,777,215 (2^24 - 1)
+            return fn(varbinary_re.sub("MEDIUMBLOB", stmt))
+        return ret
+
     def _append_table_epilogue(sql, fn):
         epilogue = sql.config.get('create_table_epilogue', "")
         if epilogue == "":
@@ -622,6 +649,7 @@ class SqlAbstraction(object):
         sql.configure_int_type()
         sql.configure_sequence_type()
         sql.configure_limit_style()
+        sql.configure_concat_style()
 
         return sql.config
 
@@ -953,3 +981,28 @@ class SqlAbstraction(object):
             return False
         finally:
             sql.drop_table_if_exists("%stest_1" % sql.prefix)
+
+    def configure_concat_style(sql):
+        for val in ['ansi', 'mysql']:
+            sql.config['concat_style'] = val
+            sql._set_flavour()
+            if sql._test_concat_style():
+                sql.log.info("concat_style=%s", val)
+                return
+        raise Exception("Can not find suitable concatenation style.")
+
+    def _test_concat_style(sql):
+        try:
+            rows = sql.selectall("""
+                SELECT 'foo' || ? || 'baz' AS String1,
+                    ? || 'foo' || ? AS String2
+                """, ('bar', 'baz', 'bar'));
+            sql.log.info(str(rows))
+            if rows[0][0] == 'foobarbaz' and rows[0][1] == 'bazfoobar':
+                return True
+        except Exception as e:
+            pass
+
+        sql.rollback()
+        return False
+
